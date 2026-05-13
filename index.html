@@ -1157,7 +1157,19 @@ async function loadFromSheets() {
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const text = await resp.text();
     const raw = parseCSV(text);
-    DATA = raw.map(mapRow).filter(Boolean);
+    const descartadas = [];
+    DATA = raw.map((r, idx) => {
+      const m = mapRow(r);
+      if (!m) {
+        const codigoVal = String((r['CÓDIGO'] || r['CODIGO'] || r['Código'] || '')).trim();
+        descartadas.push({ linhaPlanilha: idx + 2, motivo: codigoVal ? 'mapRow retornou null' : 'CÓDIGO vazio', amostra: r });
+      }
+      return m;
+    }).filter(Boolean);
+    console.log('[SINC] Linhas no CSV (sem cabeçalho):', raw.length);
+    console.log('[SINC] Linhas carregadas no dashboard:', DATA.length);
+    console.log('[SINC] Linhas descartadas:', descartadas.length);
+    if (descartadas.length) console.table(descartadas.map(d => ({ linha: d.linhaPlanilha, motivo: d.motivo })));
     if (DATA.length === 0) throw new Error('Nenhum chamado encontrado na planilha. Verifique se os cabeçalhos estão corretos (CÓDIGO, CELULA, GRUPO C, STATUS C, ANO).');
     document.getElementById('app').style.display = 'block';
     document.getElementById('last-sync').textContent = fmtTimestamp();
